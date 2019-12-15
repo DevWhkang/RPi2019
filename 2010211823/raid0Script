@@ -1,8 +1,8 @@
 #!/bin/bash
 
-sudo umount /media/pi/USB1
-sudo umount /media/pi/USB2
-sudo umount /media/pi/USB3
+sudo umount /dev/sda1
+sudo umount /dev/sdb1
+sudo umount /dev/sdc1
 clear
 sudo umount /home/pi/RAID0
 sudo umount /home/pi/RAID5
@@ -10,9 +10,9 @@ clear
 sudo mdadm -S /dev/md5
 sudo mdadm -S /dev/md0
 clear
-sudo mdadm --zero-superblock /dev/sda1 /dev/sdc4 /dev/sdb1
+sudo mdadm --zero-superblock /dev/sda1 /dev/sdc1 /dev/sdb1
 clear
-echo yes | sudo mdadm --create /dev/md0 --level=0 --raid-device=2 /dev/sda1 /dev/sdc4
+echo yes | sudo mdadm --create /dev/md0 --level=0 --raid-device=2 /dev/sda1 /dev/sdc1
 #cat /proc/mdstat
 clear
 echo done | sudo mkfs -t ext4 /dev/md0

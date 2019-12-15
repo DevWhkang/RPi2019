@@ -22,19 +22,19 @@
 #define Buffer_size	(1024 * (Event + 64))
 
 char buffer[Buffer_size];
-
+// 명령어 수행 함수, RED LED Flash 함수, USB Input tracking 함수 선언
 int Commend(const char *scriFileName, const char *usbName);
 void *FlashLED(void *arg);
 char *EventUSB();		// USB 저장장치 입력시 해당 이름을 반환
 
 int main(int argc, char *argv) {
-	int nBtnDelay = 0;
-	int isSelectRaid = -1;
-	int succState;
-	pthread_t p1;
-
+	int nBtnDelay = 0; // 초기화시 사용할 초기화 버튼 딜레이 변수
+	int isSelectRaid = -1; // RAID 구성 여부 변수
+	int succState; //RAID 구성 완료시 상태 저장 변수
+	pthread_t p1; // 쓰레드 변수 선언
+	// GPIO 셋업
 	wiringPiSetupGpio();
-
+	// pin 모드 설정
 	pinMode(SW_1, INPUT);
 	pinMode(SW_2, INPUT);
 	pinMode(SW_3, INPUT);
@@ -54,17 +54,19 @@ int main(int argc, char *argv) {
 	printf(" # First step : Press button 1 or button 2 to select the desired RAID Level\n\n");
 	printf("=============================================================================\n");
 	printf("=============================================================================\n");
-	
+	// RAID 구성이 안될경우 루프
 	while(isSelectRaid == -1)
 	{
+		// 첫번째 스위치
 		if (digitalRead(SW_1) == 0 && digitalRead(SW_2) == 1)
 		{
 			// RAID Level 0
 			digitalWrite(LED_RED, LOW);
 			digitalWrite(LED_GREEN, LOW);
 			digitalWrite(LED_YELLOW, LOW);
-			
+			// Commend() 함수에서 RAID 구성 명령 수행한 리턴값 반환
 			succState = Commend("./raid0Script", "");
+			// 성공하면 성공 문구 출력(Level 0)
 			if(succState == 0) //If success RAID level 0 
 			{
 				digitalWrite(LED_YELLOW, HIGH);
@@ -75,15 +77,16 @@ int main(int argc, char *argv) {
 			}
 					
 		}
+		// 두번째 스위치
 		else if (digitalRead(SW_1) == 1 && digitalRead(SW_2) == 0)
 		{
 			// RAID Level 5
 			digitalWrite(LED_RED, LOW);
 			digitalWrite(LED_GREEN, LOW);
 			digitalWrite(LED_YELLOW, LOW);
-			
+			// Commend() 함수에서 RAID 구성 명령 수행한 리턴값 반환
 			succState = Commend("./raid5Script", "");
-
+			// 성공하면 성공 문구 출력(Level 5)
 			if(succState == 0) //If success RAID level 5
 			{
 				digitalWrite(LED_GREEN, HIGH);
@@ -103,8 +106,10 @@ int main(int argc, char *argv) {
 			printf("   place as soon as a USB is inserted  \n");
 			printf("=======================================\n");
 			printf("=======================================\n");
-
+			// USB Tracking 함수 실행, USB가 입력되면 자동 마운트된 폴더의 경로를 가져옴
+			// USB Input 대기
 			char* abc = EventUSB();
+			// 쓰레드 생성 -> RED LED Flash
 			pthread_create(&p1, NULL, FlashLED, NULL);
 			printf("Backup Start...\n\n");
 			printf("Input USB name is : %s\n\n", abc);
@@ -115,17 +120,19 @@ int main(int argc, char *argv) {
 			 */
 			if(isSelectRaid == RAID0)
 			{	
+				// Commend() 함수에서 rsync 명령 수행(Level 0) 
 				succState = Commend("./lev0BackupScript", abc);
 				if(succState == 0)
 					printf("Auto Incremental Backup Complete!!\n\n");
 			}
 			else if(isSelectRaid == RAID5)
 			{
+				// Commend() 함수에서 rsync 명령 수행(Level 5)
 				succState = Commend("./lev5BackupScript", abc);
 				if(succState == 0)
 					printf("Auto Incremental backup Complete!!");
 			}
-			pthread_cancel(p1);
+			pthread_cancel(p1); // Backup 종료 후 쓰레드 종료
 			digitalWrite(LED_RED, LOW);
 			printf("====================================================\n");
 			printf("                  Backup End                        \n");
@@ -143,8 +150,11 @@ int main(int argc, char *argv) {
 			printf("====================================================\n");
 			
 			nBtnDelay = 0;
+			// 초기화 여부를 묻고 10초 동안 응답이 없으면 구성된 RAID Level로
+			// 다시 USB Tracking
 			while(++nBtnDelay < 9)
-			{
+			{	
+				//초기화 버튼이 눌리면 초기화
 				if(digitalRead(SW_3) == 1)
 				{
 					isSelectRaid = -1;
@@ -175,11 +185,14 @@ int main(int argc, char *argv) {
 int Commend(const char* scriFileName, const char* usbName)
 {
 	int state;
-	char *comm;
+	char *comm; // 합친 문자열 저장 포인터 변수
 	FILE *fp = NULL;
+	// 명령어 문자열을 담을 메모리 동적 할당
 	comm = (char *)malloc(sizeof(char)*255);
+	// 인자로 받은 문자열 합침
 	sprintf(comm, "%s %s", scriFileName, usbName);
-	memset(buffer, 0, Buffer_size);
+	memset(buffer, 0, Buffer_size); //버퍼 초기화
+	//쉘 스크립트를 오픈하여 명령어 수행(popen() ->내부적 exec(), pipe))
 	fp = popen(comm, "w");
 	while(fgets(buffer, Buffer_size, fp) != NULL){
 			printf("%s", buffer);
@@ -188,7 +201,7 @@ int Commend(const char* scriFileName, const char* usbName)
 	free(comm);
 	return state;
 }
-
+// RED LED Flash 함수
 void *FlashLED(void *arg)
 {   
     int i = 0;
