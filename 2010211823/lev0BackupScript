@@ -1,0 +1,5 @@
+#!/bin/bash
+
+sudo rsync -avz /media/pi/$1 /home/pi/RAID0
+
+
